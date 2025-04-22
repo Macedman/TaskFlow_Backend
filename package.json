@@ -1,0 +1,30 @@
+{
+  "name": "taskflow_backend",
+  "version": "1.0.0",
+  "description": "Kanban-style task management app inspired by Trello",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "npx tsc",
+    "local": "rimraf dist && concurrently \"npx tsc -w\" \"nodemon dist/index.js\"",
+    "dev": "nodemon src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "joi": "^17.13.3",
+    "pg": "^8.14.1",
+    "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.1",
+    "concurrently": "^9.1.2",
+    "nodemon": "^3.1.9",
+    "rimraf": "^6.0.1"
+  }
+}
