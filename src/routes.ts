@@ -13,7 +13,7 @@ router.post('/api/login', login);
 
 //protected routes
 router.use(authMiddleware);
-router.get('/api/getTasks', getTasks);
+router.post('/api/getTasks', getTasks);
 
 
 export default router;
