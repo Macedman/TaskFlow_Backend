@@ -4,6 +4,7 @@ import { login } from './middlewares/login';
 import { authMiddleware } from './middlewares/authMiddleware';
 import { getTasks } from './getTasks/getTasks';
 import { getTaskDetails } from './getTaskDetails/getTaskDetails';
+import { addTask } from './addTask/addTask';
 
 const router = express.Router();
 //router.use(authMiddleware)
@@ -16,6 +17,6 @@ router.post('/api/login', login);
 router.use(authMiddleware);
 router.post('/api/getTasks', getTasks);
 router.post('/api/getTaskDetails', getTaskDetails);
-
+router.post('/api/addTask', addTask);
 
 export default router;

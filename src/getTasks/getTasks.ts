@@ -6,16 +6,8 @@ export const getTasks = async (req: Request, res: Response) => {
   console.log('userId', userId);
   try {
     const result = await pool.query(`SELECT 
-    --b.id AS board_id,
-    --b.name AS board_name,
-    --l.id AS list_id,
     l.name AS list_name,
-    --c.id AS card_id,
     c.title AS card_title
-    --c.description,
-    --c.position AS card_position
-    --c.due_date,
-    --c.created_at AS card_created_at
 FROM card_assignees ca
 JOIN cards c ON ca.card_id = c.id
 JOIN lists l ON c.list_id = l.id
