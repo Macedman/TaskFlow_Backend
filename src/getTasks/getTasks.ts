@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import pool from "../config/db";
 
 export const getTasks = async (req: Request, res: Response) => {
+  const userId = req.body.userId;
+  console.log('userId', userId);
   try {
     const result = await pool.query(`SELECT 
     --b.id AS board_id,
@@ -18,15 +20,13 @@ FROM card_assignees ca
 JOIN cards c ON ca.card_id = c.id
 JOIN lists l ON c.list_id = l.id
 JOIN boards b ON l.board_id = b.id
-WHERE ca.user_id = 1
-ORDER BY b.id, l.position, c.position;`);
+WHERE ca.user_id = $1
+ORDER BY b.id, l.position, c.position;`, [userId]);
     const tasks = result.rows;
-    //group tasks by list name
+    //group tasks by list name  
     const grouped = tasks.reduce((acc, card) => {
     if (!acc[card.list_name]) {
       acc[card.list_name] = [];  // Initialize the list group if it doesn't exist yet
-      console.log('acc', acc);
-      console.log('card', card);
     }
 
     acc[card.list_name].push(card.card_title); // Add the card to the appropriate group
