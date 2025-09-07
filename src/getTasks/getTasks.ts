@@ -7,6 +7,7 @@ export const getTasks = async (req: Request, res: Response) => {
   try {
     const result = await pool.query(`SELECT 
     l.name AS list_name,
+    c.id AS card_id,
     c.title AS card_title
 FROM card_assignees ca
 JOIN cards c ON ca.card_id = c.id
@@ -21,7 +22,7 @@ ORDER BY b.id, l.position, c.position;`, [userId]);
       acc[card.list_name] = [];  // Initialize the list group if it doesn't exist yet
     }
 
-    acc[card.list_name].push(card.card_title); // Add the card to the appropriate group
+    acc[card.list_name].push({card_id: card.card_id, card_title: card.card_title}); // Add the card to the appropriate group
 
     return acc;  // Return the updated accumulator for the next loop
   }, {});
