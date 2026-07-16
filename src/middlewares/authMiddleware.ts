@@ -11,7 +11,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
     const authHeaders = req.headers.authorization;
 
     if (!authHeaders || !authHeaders.startsWith("Bearer ")) {
-        res.status(401).json({ message: "Unauthorized" });
+        return res.status(401).json({ message: "Unauthorized" });
     }
 
     if (authHeaders) {
@@ -24,7 +24,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
             req.user = decoded;
             next();
         } catch (error) {
-            res.status(401).json({ message: "Invalid or expired token" });
+            return res.status(401).json({ message: "Invalid or expired token" });
         }
     }
 }

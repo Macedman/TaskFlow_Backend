@@ -6,7 +6,7 @@ export const signup = async (req : Request, res : Response) => {
     const { email, password, fullname } = req.body;
 
     if (!email || !fullname || !password) {
-        res.status(400).json({ message: "Missing required fields"});
+        return res.status(400).json({ message: "Missing required fields"});
     }
 
     try {
@@ -17,7 +17,7 @@ export const signup = async (req : Request, res : Response) => {
         );
 
         if  (existingUser.rows.length > 0) {
-            res.status(400).json({message: "Email already taken"});
+            return res.status(400).json({message: "Email already taken"});
         }
 
         //2. Hash the password
