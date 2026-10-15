@@ -31,7 +31,7 @@ export const addTask = async (req: Request, res: Response) => {
       INSERT INTO card_assignees (card_id, user_id)
       VALUES ($1, $2);
     `;
-        const insertAssigneeValues = [newCard.id, req.body.userId];
+        const insertAssigneeValues = [newCard.id, userId];
         await pool.query(insertAssigneeQuery, insertAssigneeValues);
 
         res.status(201).json(newCard);

@@ -3,9 +3,12 @@ import pool from "../config/db";
 
 export const getTasks = async (req: Request, res: Response) => {
   const userId = req.body.userId;
+  const boardId = req.body.boardId;
   console.log('userId', userId);
   try {
-    const result = await pool.query(`SELECT 
+    const result = await pool.query(
+    `SELECT
+    l.id AS list_id,
     l.name AS list_name,
     c.id AS card_id,
     c.title AS card_title
@@ -14,19 +17,28 @@ JOIN cards c ON ca.card_id = c.id
 JOIN lists l ON c.list_id = l.id
 JOIN boards b ON l.board_id = b.id
 WHERE ca.user_id = $1
-ORDER BY b.id, l.position, c.position;`, [userId]);
+AND b.id = $2
+ORDER BY l.position, c.position;`, [userId, boardId]);
     const tasks = result.rows;
     //group tasks by list name  
     const grouped = tasks.reduce((acc, card) => {
-    if (!acc[card.list_name]) {
-      acc[card.list_name] = [];  // Initialize the list group if it doesn't exist yet
+      //change to list_id instead of list_name to avoid issues with duplicate list names
+    if (!acc[card.list_id]) {
+      acc[card.list_id] = {
+        listId: card.list_id,
+        listName: card.list_name,
+        cards: []
+      };  // Initialize the list group if it doesn't exist yet
     }
 
-    acc[card.list_name].push({card_id: card.card_id, card_title: card.card_title}); // Add the card to the appropriate group
+    acc[card.list_id].cards.push({
+      card_id: card.card_id,
+      card_title: card.card_title}); // Add the card to the appropriate group
 
     return acc;  // Return the updated accumulator for the next loop
   }, {});
-    res.status(200).json(grouped);
+    const lists = Object.values(grouped); // Convert the grouped object into an array of lists
+    res.status(200).json(lists);
   } catch (error) {
     res.status(500).json({ message: "Internal server error" });
   }
