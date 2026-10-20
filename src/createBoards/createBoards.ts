@@ -38,23 +38,6 @@ export const createBoard = async (req: Request, res: Response) => {
 
         const board = boardResult.rows[0];
 
-        // Create default lists
-        await client.query(
-            `
-            INSERT INTO lists
-            (
-                board_id,
-                name,
-                position
-            )
-            VALUES
-                ($1, 'To Do', 0),
-                ($1, 'In Progress', 1),
-                ($1, 'Done', 2)
-            `,
-            [board.id]
-        );
-
         await client.query("COMMIT");
 
         res.status(201).json({
