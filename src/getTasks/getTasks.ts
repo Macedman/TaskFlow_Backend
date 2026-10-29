@@ -19,13 +19,10 @@ export const getTasks = async (req: Request, res: Response) => {
     l.name AS list_name,
     c.id AS card_id,
     c.title AS card_title
-FROM card_assignees ca
-JOIN cards c ON ca.card_id = c.id
-JOIN lists l ON c.list_id = l.id
-JOIN boards b ON l.board_id = b.id
-WHERE ca.user_id = $1
-AND b.id = $2
-ORDER BY l.position, c.position;`, [userId, boardId]);
+FROM lists l
+LEFT JOIN cards c ON c.list_id = l.id
+WHERE l.board_id = $1
+ORDER BY l.position, c.position;`, [boardId]);
     const tasks = result.rows;
     //group tasks by list name  
     const grouped = tasks.reduce((acc, card) => {
@@ -38,7 +35,8 @@ ORDER BY l.position, c.position;`, [userId, boardId]);
       };  // Initialize the list group if it doesn't exist yet
     }
 
-    acc[card.list_id].cards.push({
+    // An empty list comes back as one row with a NULL card; keep it as cards: []
+    if (card.card_id !== null) acc[card.list_id].cards.push({
       card_id: card.card_id,
       card_title: card.card_title}); // Add the card to the appropriate group
 
