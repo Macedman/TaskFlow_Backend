@@ -1,11 +1,18 @@
 import { Request, Response } from "express";
 import pool from "../config/db";
+import { getUserId } from "../middlewares/authMiddleware";
+import { canAccessBoard } from "../middlewares/boardAccess";
 
 export const getTasks = async (req: Request, res: Response) => {
-  const userId = req.body.userId;
+  const userId = getUserId(req);
   const boardId = req.body.boardId;
   console.log('userId', userId);
   try {
+    if (!(await canAccessBoard(userId, boardId))) {
+      res.status(404).json({ message: "Board not found" });
+      return;
+    }
+
     const result = await pool.query(
     `SELECT
     l.id AS list_id,

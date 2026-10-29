@@ -79,4 +79,46 @@ describe("authorization", () => {
     );
     expect(rows).toHaveLength(0);
   });
+
+  it("owner can still read their own cards and card details", async () => {
+    const tasks = await request(app)
+      .post("/api/getTasks")
+      .set(as(alice))
+      .send({ boardId: aliceBoard.boardId });
+    expect(tasks.status).toBe(200);
+    expect(JSON.stringify(tasks.body)).toContain("Secret task");
+
+    const details = await request(app)
+      .post("/api/getTaskDetails")
+      .set(as(alice))
+      .send({ cardId: aliceBoard.cardId });
+    expect(details.status).toBe(200);
+    expect(details.body.card_title).toBe("Secret task");
+  });
+
+  it("owner can add a card to their own list", async () => {
+    const res = await request(app)
+      .post("/api/addTask")
+      .set(as(alice))
+      .send({ title: "New task", listId: aliceBoard.listId });
+    expect(res.status).toBe(201);
+  });
+
+  it("a board member can see a board they don't own", async () => {
+    const carol = await createUser("carol");
+    const carolBoard = await createBoardWithCard(carol);
+    await pool.query(
+      "INSERT INTO board_members (board_id, user_id, role) VALUES ($1, $2, 'member')",
+      [carolBoard.boardId, bob.id]
+    );
+
+    const boards = await request(app).post("/api/getBoards").set(as(bob)).send({});
+    expect(boards.body.map((b: any) => b.id)).toContain(carolBoard.boardId);
+
+    const tasks = await request(app)
+      .post("/api/getTasks")
+      .set(as(bob))
+      .send({ boardId: carolBoard.boardId });
+    expect(tasks.status).toBe(200);
+  });
 });

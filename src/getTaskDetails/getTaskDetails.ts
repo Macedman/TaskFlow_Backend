@@ -1,7 +1,10 @@
 import pool from "../config/db";
 import { Request, Response } from "express";
+import { getUserId } from "../middlewares/authMiddleware";
+import { BOARD_ACCESS_SQL } from "../middlewares/boardAccess";
 
 export const getTaskDetails = async (req: Request, res: Response)  => {
+    const userId = getUserId(req);
     const cardId = req.body.cardId;
     try {
         const result = await pool.query(`SELECT 
@@ -21,8 +24,14 @@ JOIN
     lists l ON c.list_id = l.id
 JOIN 
     boards b ON l.board_id = b.id
-WHERE 
-    c.id = $1`, [cardId]);
+WHERE
+    c.id = $2
+    AND ${BOARD_ACCESS_SQL}`, [userId, cardId]);
+
+    if (result.rows.length === 0) {
+        res.status(404).json({ message: "Card not found" });
+        return;
+    }
 
     res.status(200).json(result.rows[0]);
     } catch (error) {

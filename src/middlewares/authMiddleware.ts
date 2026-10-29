@@ -3,8 +3,19 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 
 dotenv.config();
-interface AuthRequest extends Request {
-    user?: any;
+export interface AuthUser {
+    userId: number;
+    email: string;
+}
+
+export interface AuthRequest extends Request {
+    user?: AuthUser;
+}
+
+// The logged-in user's id, taken from the verified JWT.
+// Only call this behind authMiddleware.
+export const getUserId = (req: Request): number => {
+    return (req as AuthRequest).user!.userId;
 }
 
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -21,7 +32,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
         try {
             const secret = process.env.JWT_SECRET as string;
             const decoded = jwt.verify(token, secret);
-            req.user = decoded;
+            req.user = decoded as AuthUser;
             next();
         } catch (error) {
             return res.status(401).json({ message: "Invalid or expired token" });

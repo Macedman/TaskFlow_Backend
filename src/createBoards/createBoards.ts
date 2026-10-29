@@ -1,11 +1,13 @@
 import { Request, Response } from "express";
 import pool from "../config/db";
+import { getUserId } from "../middlewares/authMiddleware";
 
 export const createBoard = async (req: Request, res: Response) => {
 
-    const { name, ownerId } = req.body;
+    const { name } = req.body;
+    const ownerId = getUserId(req);
 
-    if (!name || !ownerId) {
+    if (!name) {
         res.status(400).json({
             message: "Missing required fields."
         });
