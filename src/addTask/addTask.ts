@@ -7,13 +7,17 @@ export const addTask = async (req: Request, res: Response) => {
     const { title, listId } = req.body;
     const userId = getUserId(req);
 
-        if (!listId || !title) {
+        // a non-numeric listId would make Postgres throw (500)
+        if (!Number.isInteger(Number(listId)) || !title) {
             res.status(400).json({ message: "listId and title are required" });
             return;
         }
+
+    // the card and its assignee are saved together or not at all
+    const client = await pool.connect();
     try {
         // 0. make sure the list is on a board the user can access
-        const access = await pool.query(
+        const access = await client.query(
             `SELECT 1 FROM lists l
             JOIN boards b ON l.board_id = b.id
             WHERE l.id = $2 AND ${BOARD_ACCESS_SQL}`,
@@ -23,6 +27,8 @@ export const addTask = async (req: Request, res: Response) => {
             res.status(404).json({ message: "List not found" });
             return;
         }
+
+        await client.query("BEGIN");
 
         // 1. create the card
         const query = `
@@ -37,7 +43,7 @@ export const addTask = async (req: Request, res: Response) => {
       RETURNING *;
         `;
         const values = [listId, title];
-        const { rows } = await pool.query(query, values);
+        const { rows } = await client.query(query, values);
         const newCard = rows[0];
 
         // 2.assign the card to the current user
@@ -46,10 +52,15 @@ export const addTask = async (req: Request, res: Response) => {
       VALUES ($1, $2);
     `;
         const insertAssigneeValues = [newCard.id, userId];
-        await pool.query(insertAssigneeQuery, insertAssigneeValues);
+        await client.query(insertAssigneeQuery, insertAssigneeValues);
+
+        await client.query("COMMIT");
 
         res.status(201).json(newCard);
     } catch (error) {
+        await client.query("ROLLBACK");
         res.status(500).json({ error: "Internal server error" });
+    } finally {
+        client.release();
     }
 }

@@ -6,6 +6,12 @@ import { BOARD_ACCESS_SQL } from "../middlewares/boardAccess";
 export const getTaskDetails = async (req: Request, res: Response)  => {
     const userId = getUserId(req);
     const cardId = req.body.cardId;
+
+    // Number.isInteger also rejects a missing cardId; a non-numeric one would make Postgres throw (500)
+    if (!Number.isInteger(Number(cardId))) {
+        res.status(400).json({ message: "cardId is required" });
+        return;
+    }
     try {
         const result = await pool.query(`SELECT 
     c.id AS card_id,
