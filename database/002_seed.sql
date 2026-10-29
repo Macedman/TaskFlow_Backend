@@ -1,5 +1,5 @@
 -- User
-INSERT INTO users (name, email, password_hash)
+INSERT INTO users (full_name, email, password_hash)
 VALUES (
     'Eugene',
     'eugene@example.com',
