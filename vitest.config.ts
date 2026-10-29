@@ -8,7 +8,5 @@ export default defineConfig({
     env: { DB_NAME: "taskflow_test" },
     // Test files share one database, so run them one at a time.
     fileParallelism: false,
-    // The app currently logs DB credentials and the JWT secret; keep them out of test output.
-    silent: true,
   },
 });

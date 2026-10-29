@@ -6,9 +6,6 @@ import dotenv from "dotenv";
 dotenv.config();
 
 export const login = async (req: Request, res: Response) => {
-  console.log(req.body);
-  console.log(process.env.JWT_SECRET);
-
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -27,8 +24,6 @@ export const login = async (req: Request, res: Response) => {
 
     //Compare password and hashed password
     const match = await bcrypt.compare(password, user.password_hash);
-
-    console.log(match);
 
     if (!match) {
       res.status(401).json({ message: "Password is incorrect" });
