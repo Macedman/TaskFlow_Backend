@@ -10,6 +10,7 @@ export const login = async (req: Request, res: Response) => {
 
   if (!email || !password) {
     res.status(400).json({ message: "Email and Password is required" });
+    return;
   }
 
   try {
@@ -20,6 +21,7 @@ export const login = async (req: Request, res: Response) => {
 
     if (!user) {
       res.status(401).json({ message: "User does not exist" });
+      return;
     }
 
     //Compare password and hashed password
@@ -27,6 +29,7 @@ export const login = async (req: Request, res: Response) => {
 
     if (!match) {
       res.status(401).json({ message: "Password is incorrect" });
+      return;
     }
 
     //Generate JWT token
