@@ -6,6 +6,7 @@ import { getTasks } from './getTasks/getTasks';
 import { getTaskDetails } from './getTaskDetails/getTaskDetails';
 import { addTask } from './addTask/addTask';
 import { addList } from './addList/addList';
+import { updateList } from './updateList/updateList';
 import { getBoards } from './getBoards/getBoards';
 import { createBoard } from './createBoards/createBoards';
 
@@ -24,6 +25,7 @@ router.post('/api/getTasks', getTasks);
 router.post('/api/getTaskDetails', getTaskDetails);
 router.post('/api/addTask', addTask);
 router.post('/api/addList', addList);
+router.post('/api/updateList', updateList);
 router.post('/api/getBoards', getBoards);
 router.post('/api/createBoards', createBoard);
 export default router;
