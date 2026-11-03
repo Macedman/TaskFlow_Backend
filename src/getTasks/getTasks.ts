@@ -1,12 +1,19 @@
 import { Request, Response } from "express";
 import pool from "../config/db";
 import { getUserId } from "../middlewares/authMiddleware";
+import { isValidId } from "../middlewares/isValidId";
 import { canAccessBoard } from "../middlewares/boardAccess";
 
 export const getTasks = async (req: Request, res: Response) => {
   const userId = getUserId(req);
   const boardId = req.body.boardId;
   console.log('userId', userId);
+
+  // an id Postgres can't read as INTEGER would make it throw (500)
+  if (!isValidId(boardId)) {
+    res.status(400).json({ message: "boardId is required" });
+    return;
+  }
   try {
     if (!(await canAccessBoard(userId, boardId))) {
       res.status(404).json({ message: "Board not found" });

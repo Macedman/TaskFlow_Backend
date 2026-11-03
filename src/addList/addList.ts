@@ -1,6 +1,7 @@
 import pool from "../config/db";
 import { Request, Response } from "express";
 import { getUserId } from "../middlewares/authMiddleware";
+import { isValidId } from "../middlewares/isValidId";
 import { canAccessBoard } from "../middlewares/boardAccess";
 
 export const addList = async (req: Request, res: Response) => {
@@ -8,9 +9,14 @@ export const addList = async (req: Request, res: Response) => {
     const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
     const userId = getUserId(req);
 
-    // Number.isInteger also rejects a missing boardId; a non-numeric one would make Postgres throw (500)
-    if (!Number.isInteger(Number(boardId)) || !name) {
+    // isValidId also rejects a missing boardId
+    if (!isValidId(boardId) || !name) {
         res.status(400).json({ message: "boardId and name are required" });
+        return;
+    }
+    // lists.name is VARCHAR(255); a longer value would make Postgres throw (500)
+    if (name.length > 255) {
+        res.status(400).json({ message: "name must be 255 characters or fewer" });
         return;
     }
     try {
