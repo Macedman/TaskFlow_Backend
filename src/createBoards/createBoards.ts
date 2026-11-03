@@ -13,6 +13,13 @@ export const createBoard = async (req: Request, res: Response) => {
         });
         return;
     }
+    // boards.name is VARCHAR(255); a longer value would make Postgres throw (500)
+    if (typeof name === "string" && name.length > 255) {
+        res.status(400).json({
+            message: "name must be 255 characters or fewer"
+        });
+        return;
+    }
 
     const client = await pool.connect();
 

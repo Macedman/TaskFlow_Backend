@@ -1,14 +1,15 @@
 import pool from "../config/db";
 import { Request, Response } from "express";
 import { getUserId } from "../middlewares/authMiddleware";
+import { isValidId } from "../middlewares/isValidId";
 import { BOARD_ACCESS_SQL } from "../middlewares/boardAccess";
 
 export const getTaskDetails = async (req: Request, res: Response)  => {
     const userId = getUserId(req);
     const cardId = req.body.cardId;
 
-    // Number.isInteger also rejects a missing cardId; a non-numeric one would make Postgres throw (500)
-    if (!Number.isInteger(Number(cardId))) {
+    // isValidId also rejects a missing cardId
+    if (!isValidId(cardId)) {
         res.status(400).json({ message: "cardId is required" });
         return;
     }

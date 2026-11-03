@@ -1,6 +1,7 @@
 import pool from "../config/db";
 import { Request, Response } from "express";
 import { getUserId } from "../middlewares/authMiddleware";
+import { isValidId } from "../middlewares/isValidId";
 import { BOARD_ACCESS_SQL } from "../middlewares/boardAccess";
 
 export const updateCard = async (req: Request, res: Response) => {
@@ -8,8 +9,8 @@ export const updateCard = async (req: Request, res: Response) => {
     const title = typeof req.body.title === "string" ? req.body.title.trim() : req.body.title;
     const userId = getUserId(req);
 
-    // a non-numeric cardId would make Postgres throw (500)
-    if (!Number.isInteger(Number(cardId))) {
+    // an id Postgres can't read as INTEGER would make it throw (500)
+    if (!isValidId(cardId)) {
         res.status(400).json({ message: "cardId is required" });
         return;
     }
