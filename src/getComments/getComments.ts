@@ -29,7 +29,7 @@ export const getComments = async (req: Request, res: Response) => {
 
         // newest first; id breaks a tie if two comments share a timestamp
         const { rows } = await pool.query(
-            `SELECT cc.id AS comment_id, cc.body, cc.created_at, u.id AS user_id, u.full_name AS author_name
+            `SELECT cc.id AS comment_id, cc.body, cc.created_at, cc.updated_at, u.id AS user_id, u.full_name AS author_name
             FROM card_comments cc
             JOIN users u ON u.id = cc.user_id
             WHERE cc.card_id = $1

@@ -10,6 +10,8 @@ import { updateList } from './updateList/updateList';
 import { updateCard } from './updateCard/updateCard';
 import { addComment } from './addComment/addComment';
 import { getComments } from './getComments/getComments';
+import { updateComment } from './updateComment/updateComment';
+import { deleteComment } from './deleteComment/deleteComment';
 import { getBoards } from './getBoards/getBoards';
 import { createBoard } from './createBoards/createBoards';
 
@@ -32,6 +34,8 @@ router.post('/api/updateList', updateList);
 router.post('/api/updateCard', updateCard);
 router.post('/api/addComment', addComment);
 router.post('/api/getComments', getComments);
+router.post('/api/updateComment', updateComment);
+router.post('/api/deleteComment', deleteComment);
 router.post('/api/getBoards', getBoards);
 router.post('/api/createBoards', createBoard);
 export default router;

@@ -54,6 +54,7 @@ describe("addComment", () => {
       comment_id: expect.any(Number),
       body: "First!",
       created_at: expect.any(String),
+      updated_at: null,
       user_id: owner.id,
       author_name: "owner",
     });
