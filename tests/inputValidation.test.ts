@@ -38,6 +38,8 @@ const idRoutes: [string, string, Record<string, unknown>][] = [
   ["/api/addTask", "listId", { title: "Task" }],
   ["/api/updateList", "listId", { name: "Renamed" }],
   ["/api/updateCard", "cardId", { title: "Renamed" }],
+  ["/api/addComment", "cardId", { body: "Hi" }],
+  ["/api/getComments", "cardId", {}],
 ];
 
 describe.each(idRoutes)("%s", (route, field, rest) => {

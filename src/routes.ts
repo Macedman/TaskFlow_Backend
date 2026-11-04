@@ -8,6 +8,8 @@ import { addTask } from './addTask/addTask';
 import { addList } from './addList/addList';
 import { updateList } from './updateList/updateList';
 import { updateCard } from './updateCard/updateCard';
+import { addComment } from './addComment/addComment';
+import { getComments } from './getComments/getComments';
 import { getBoards } from './getBoards/getBoards';
 import { createBoard } from './createBoards/createBoards';
 
@@ -28,6 +30,8 @@ router.post('/api/addTask', addTask);
 router.post('/api/addList', addList);
 router.post('/api/updateList', updateList);
 router.post('/api/updateCard', updateCard);
+router.post('/api/addComment', addComment);
+router.post('/api/getComments', getComments);
 router.post('/api/getBoards', getBoards);
 router.post('/api/createBoards', createBoard);
 export default router;
