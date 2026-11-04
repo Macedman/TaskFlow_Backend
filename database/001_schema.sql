@@ -4,6 +4,7 @@
 -- ==========================================
 
 -- Drop tables in reverse dependency order (optional for development)
+DROP TABLE IF EXISTS card_comments CASCADE;
 DROP TABLE IF EXISTS card_assignees CASCADE;
 DROP TABLE IF EXISTS board_members CASCADE;
 DROP TABLE IF EXISTS cards CASCADE;
