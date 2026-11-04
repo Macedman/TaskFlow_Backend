@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { getUserId } from "../middlewares/authMiddleware";
 import { isValidId } from "../middlewares/isValidId";
 import { BOARD_ACCESS_SQL } from "../middlewares/boardAccess";
+import { storage } from "../storage/storage";
 
 export const deleteAttachment = async (req: Request, res: Response) => {
     const { attachmentId } = req.body;
@@ -25,12 +26,20 @@ export const deleteAttachment = async (req: Request, res: Response) => {
             AND a.id = $2
             AND (a.user_id = $1 OR b.owner_id = $1)
             AND ${BOARD_ACCESS_SQL}
-            RETURNING a.id;`,
+            RETURNING a.id, a.storage_key;`,
             [userId, attachmentId]
         );
         if (rows.length === 0) {
             res.status(404).json({ message: "Attachment not found" });
             return;
+        }
+
+        // row first, then the file: if removing the file fails we only leave an unused file,
+        // never a row pointing at a missing one
+        if (rows[0].storage_key) {
+            await storage.remove(rows[0].storage_key).catch(error =>
+                console.error("Could not remove attachment file", rows[0].storage_key, error)
+            );
         }
 
         res.status(200).json({ attachment_id: rows[0].id });

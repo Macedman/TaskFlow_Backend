@@ -19,3 +19,5 @@ yarn-error.log*
 
 # Others
 coverage/
+# Uploaded attachment files (development)
+uploads/
