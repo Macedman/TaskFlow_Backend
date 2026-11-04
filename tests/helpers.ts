@@ -18,7 +18,7 @@ export async function resetDatabase() {
     throw new Error(`Refusing to reset database "${rows[0].name}"`);
   }
   await pool.query(
-    "TRUNCATE card_comments, card_assignees, board_members, cards, lists, boards, users RESTART IDENTITY CASCADE"
+    "TRUNCATE card_attachments, card_comments, card_assignees, board_members, cards, lists, boards, users RESTART IDENTITY CASCADE"
   );
 }
 
