@@ -24,7 +24,8 @@ export const getTaskDetails = async (req: Request, res: Response)  => {
     l.id AS list_id,
     l.name AS list_name,
     b.id AS board_id,
-    b.name AS board_name
+    b.name AS board_name,
+    b.owner_id AS board_owner_id
 FROM 
     cards c
 JOIN 

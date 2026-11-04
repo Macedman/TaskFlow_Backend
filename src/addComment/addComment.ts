@@ -4,8 +4,8 @@ import { getUserId } from "../middlewares/authMiddleware";
 import { isValidId } from "../middlewares/isValidId";
 import { BOARD_ACCESS_SQL } from "../middlewares/boardAccess";
 
-// card_comments.body is TEXT, so this limit is ours, not the database's
-const MAX_BODY_LENGTH = 5000;
+// card_comments.body is TEXT, so this limit is ours, not the database's. updateComment uses it too
+export const MAX_BODY_LENGTH = 5000;
 
 export const addComment = async (req: Request, res: Response) => {
     const { cardId } = req.body;
@@ -32,9 +32,9 @@ export const addComment = async (req: Request, res: Response) => {
                 JOIN lists l ON c.list_id = l.id
                 JOIN boards b ON l.board_id = b.id
                 WHERE c.id = $2 AND ${BOARD_ACCESS_SQL}
-                RETURNING id, user_id, body, created_at
+                RETURNING id, user_id, body, created_at, updated_at
             )
-            SELECT i.id AS comment_id, i.body, i.created_at, u.id AS user_id, u.full_name AS author_name
+            SELECT i.id AS comment_id, i.body, i.created_at, i.updated_at, u.id AS user_id, u.full_name AS author_name
             FROM inserted i
             JOIN users u ON u.id = i.user_id;`,
             [userId, cardId, body]
