@@ -15,6 +15,9 @@ import { deleteComment } from './deleteComment/deleteComment';
 import { addLinkAttachment } from './addLinkAttachment/addLinkAttachment';
 import { getAttachments } from './getAttachments/getAttachments';
 import { deleteAttachment } from './deleteAttachment/deleteAttachment';
+import { uploadPdfAttachment } from './uploadPdfAttachment/uploadPdfAttachment';
+import { getAttachmentDownloadUrl } from './getAttachmentDownloadUrl/getAttachmentDownloadUrl';
+import { downloadFile } from './downloadFile/downloadFile';
 import { getBoards } from './getBoards/getBoards';
 import { createBoard } from './createBoards/createBoards';
 
@@ -24,6 +27,9 @@ const router = express.Router();
 //unprotected routes
 router.post('/api/signup', signup as RequestHandler);
 router.post('/api/login', login);
+
+// the signed, short-lived token in the URL is the permission, so no login header
+router.get('/api/files/:token', downloadFile);
 
 //protected routes
 // authMiddleware has a custom request type (AuthRequest). Cast to RequestHandler
@@ -42,6 +48,8 @@ router.post('/api/deleteComment', deleteComment);
 router.post('/api/addLinkAttachment', addLinkAttachment);
 router.post('/api/getAttachments', getAttachments);
 router.post('/api/deleteAttachment', deleteAttachment);
+router.post('/api/uploadPdfAttachment', uploadPdfAttachment);
+router.post('/api/getAttachmentDownloadUrl', getAttachmentDownloadUrl);
 router.post('/api/getBoards', getBoards);
 router.post('/api/createBoards', createBoard);
 export default router;
