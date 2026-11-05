@@ -7,7 +7,6 @@ import { canAccessBoard } from "../middlewares/boardAccess";
 export const getTasks = async (req: Request, res: Response) => {
   const userId = getUserId(req);
   const boardId = req.body.boardId;
-  console.log('userId', userId);
 
   // an id Postgres can't read as INTEGER would make it throw (500)
   if (!isValidId(boardId)) {

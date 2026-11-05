@@ -1,27 +1,28 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import pool from './config/db';
 import routes from './routes'
 
 dotenv.config();
 
 const app = express();
 
+// Behind a hosting proxy (Render), the client's address is in X-Forwarded-For. Only trust it there:
+// locally anyone could send that header and pretend to be a new address to dodge the rate limits
+if (process.env.TRUST_PROXY === '1') {
+  app.set('trust proxy', 1);
+}
+
 // Middlewares
-app.use(cors());
+// Only our frontend's browser pages may call the API; CORS_ORIGIN can list several, comma-separated
+app.use(cors({ origin: (process.env.CORS_ORIGIN || 'http://localhost:4300').split(',').map(o => o.trim()) }));
 app.use(express.json());
 
 
 // Routes
+// Health check (the host can poll this); the old GET /db debug route is gone
 app.get('/', (req, res) => {
   res.send('Hello World!');
-});
-
-//Testing POSTGRES
-app.get("/db", async (req, res) => {
-  const result = await pool.query("SELECT current_database()");
-  res.send(result.rows);
 });
 
 app.use(routes)

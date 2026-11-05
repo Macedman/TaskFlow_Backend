@@ -1,6 +1,7 @@
 import express, { Request, Response, RequestHandler } from 'express';
 import { signup } from './middlewares/signup';
 import { login } from './middlewares/login';
+import { loginLimiter, signupLimiter } from './middlewares/rateLimits';
 import { authMiddleware } from './middlewares/authMiddleware';
 import { getTasks } from './getTasks/getTasks';
 import { getTaskDetails } from './getTaskDetails/getTaskDetails';
@@ -25,8 +26,8 @@ const router = express.Router();
 //router.use(authMiddleware)
 
 //unprotected routes
-router.post('/api/signup', signup as RequestHandler);
-router.post('/api/login', login);
+router.post('/api/signup', signupLimiter, signup as RequestHandler);
+router.post('/api/login', loginLimiter, login);
 
 // the signed, short-lived token in the URL is the permission, so no login header
 router.get('/api/files/:token', downloadFile);
