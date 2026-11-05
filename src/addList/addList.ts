@@ -2,6 +2,7 @@ import pool from "../config/db";
 import { Request, Response } from "express";
 import { getUserId } from "../middlewares/authMiddleware";
 import { isValidId } from "../middlewares/isValidId";
+import { notifyBoardChanged } from "../realtime/realtime";
 import { canAccessBoard } from "../middlewares/boardAccess";
 
 export const addList = async (req: Request, res: Response) => {
@@ -40,6 +41,7 @@ export const addList = async (req: Request, res: Response) => {
 
         // same shape as a getTasks list, so the client can add it to the board as-is
         res.status(201).json({ listId: rows[0].id, listName: rows[0].name, cards: [] });
+        notifyBoardChanged(boardId, req);
     } catch (error) {
         res.status(500).json({ message: "Internal server error" });
     }

@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { PoolClient } from "pg";
 import { getUserId } from "../middlewares/authMiddleware";
 import { isValidId } from "../middlewares/isValidId";
+import { notifyBoardChanged } from "../realtime/realtime";
 import { BOARD_ACCESS_SQL } from "../middlewares/boardAccess";
 
 // Writes positions 0, 1, 2... in the given order, in one statement.
@@ -86,6 +87,7 @@ export const moveCard = async (req: Request, res: Response) => {
 
         await client.query("COMMIT");
         res.status(200).json({ card_id: card.id, list_id: toListId, position: index });
+        notifyBoardChanged(card.board_id, req);
     } catch (error) {
         await client.query("ROLLBACK");
         res.status(500).json({ message: "Internal server error" });
