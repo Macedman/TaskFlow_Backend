@@ -2,6 +2,7 @@ import pool from "../config/db";
 import { Request, Response } from "express";
 import { getUserId } from "../middlewares/authMiddleware";
 import { isValidId } from "../middlewares/isValidId";
+import { notifyBoardChanged } from "../realtime/realtime";
 import { BOARD_ACCESS_SQL } from "../middlewares/boardAccess";
 
 export const addTask = async (req: Request, res: Response) => {
@@ -25,7 +26,7 @@ export const addTask = async (req: Request, res: Response) => {
     try {
         // 0. make sure the list is on a board the user can access
         const access = await client.query(
-            `SELECT 1 FROM lists l
+            `SELECT l.board_id FROM lists l
             JOIN boards b ON l.board_id = b.id
             WHERE l.id = $2 AND ${BOARD_ACCESS_SQL}`,
             [userId, listId]
@@ -64,6 +65,7 @@ export const addTask = async (req: Request, res: Response) => {
         await client.query("COMMIT");
 
         res.status(201).json(newCard);
+        notifyBoardChanged(access.rows[0].board_id, req);
     } catch (error) {
         await client.query("ROLLBACK");
         res.status(500).json({ error: "Internal server error" });

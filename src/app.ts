@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import routes from './routes'
+import { allowedOrigins } from './config/cors';
 
 dotenv.config();
 
@@ -14,8 +15,7 @@ if (process.env.TRUST_PROXY === '1') {
 }
 
 // Middlewares
-// Only our frontend's browser pages may call the API; CORS_ORIGIN can list several, comma-separated
-app.use(cors({ origin: (process.env.CORS_ORIGIN || 'http://localhost:4300').split(',').map(o => o.trim()) }));
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 
