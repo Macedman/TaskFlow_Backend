@@ -2,6 +2,7 @@ import pool from "../config/db";
 import { Request, Response } from "express";
 import { getUserId } from "../middlewares/authMiddleware";
 import { isValidId } from "../middlewares/isValidId";
+import { notifyBoardChanged } from "../realtime/realtime";
 import { BOARD_ACCESS_SQL } from "../middlewares/boardAccess";
 
 export const updateCard = async (req: Request, res: Response) => {
@@ -40,7 +41,7 @@ export const updateCard = async (req: Request, res: Response) => {
             WHERE c.list_id = l.id
             AND c.id = $2
             AND ${BOARD_ACCESS_SQL}
-            RETURNING c.id, c.title, c.description;`,
+            RETURNING c.id, c.title, c.description, l.board_id;`,
             [userId, cardId, title ?? null, description ?? null]
         );
         if (rows.length === 0) {
@@ -54,6 +55,7 @@ export const updateCard = async (req: Request, res: Response) => {
             card_title: rows[0].title,
             description: rows[0].description,
         });
+        notifyBoardChanged(rows[0].board_id, req);
     } catch (error) {
         res.status(500).json({ message: "Internal server error" });
     }
