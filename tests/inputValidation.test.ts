@@ -38,6 +38,8 @@ const idRoutes: [string, string, Record<string, unknown>][] = [
   ["/api/addTask", "listId", { title: "Task" }],
   ["/api/updateList", "listId", { name: "Renamed" }],
   ["/api/updateCard", "cardId", { title: "Renamed" }],
+  ["/api/moveCard", "cardId", { listId: 1, position: 0 }],
+  ["/api/moveCard", "listId", { cardId: 1, position: 0 }],
   ["/api/addComment", "cardId", { body: "Hi" }],
   ["/api/getComments", "cardId", {}],
   ["/api/updateComment", "commentId", { body: "Hi" }],
