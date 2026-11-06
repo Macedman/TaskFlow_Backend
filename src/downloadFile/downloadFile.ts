@@ -1,5 +1,10 @@
 import { Request, Response } from "express";
+import contentDisposition from "content-disposition";
 import { readFile, verifyDownloadToken } from "../storage/storage";
+
+// "résumé.pdf" -> "resume.pdf": accents dropped, anything else outside ASCII becomes "_"
+const asciiFallback = (name: string) =>
+    name.normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^\x20-\x7e]/g, "_");
 
 // GET /api/files/:token
 // No login: the signed, short-lived token from getAttachmentDownloadUrl is the permission
@@ -16,7 +21,10 @@ export const downloadFile = async (req: Request, res: Response) => {
         }
 
         res.setHeader("X-Content-Type-Options", "nosniff");
-        res.attachment(download.name); // Content-Disposition: attachment, so the browser saves it
+        // attachment, so the browser saves the file. Not res.attachment(): for names like
+        // "résumé.pdf" it sends the raw é byte with no filename*, and browsers misread it.
+        // A fallback that differs from the name makes the library add filename*=UTF-8''...
+        res.setHeader("Content-Disposition", contentDisposition(download.name, { fallback: asciiFallback(download.name) }));
         res.type("application/pdf");
         res.send(data);
     } catch (error) {

@@ -196,6 +196,22 @@ describe("downloading a PDF", () => {
     expect(Buffer.compare(file.body, content)).toBe(0);
   });
 
+  // Browsers misread raw non-ASCII bytes in a header ("résumé.pdf" saved as "rýsumý.pdf"),
+  // so the exact name goes in filename* (UTF-8) and filename gets a readable ASCII stand-in
+  it.each([
+    ["résumé.pdf", "resume.pdf", "r%C3%A9sum%C3%A9.pdf"],
+    ["naïve—plan.pdf", "naive_plan.pdf", "na%C3%AFve%E2%80%94plan.pdf"],
+  ])("downloads %s under its exact name, with an ASCII-only header", async (name, fallback, encoded) => {
+    const id = (await upload(owner, pdfBytes(), name)).body.attachment_id;
+    const { url } = (await downloadUrl(owner, id)).body;
+
+    const file = await request(app).get(url);
+
+    const header = file.headers["content-disposition"];
+    expect(header).toMatch(/^[\x20-\x7e]*$/);
+    expect(header).toBe(`attachment; filename="${fallback}"; filename*=UTF-8''${encoded}`);
+  });
+
   it("does not give a stranger a link", async () => {
     const res = await downloadUrl(stranger, attachmentId);
     expect(res.status).toBe(404);
