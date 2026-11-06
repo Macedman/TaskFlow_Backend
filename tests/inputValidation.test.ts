@@ -99,6 +99,30 @@ describe("name lengths", () => {
     expect(res.status).toBe(400);
   });
 
+  it.each([
+    ["a blank name", "   "],
+    ["a number", 5],
+    ["an object", { name: "Home" }],
+  ])("createBoards returns 400 for %s and creates nothing", async (_label, name) => {
+    const before = await pool.query("SELECT count(*)::int AS n FROM boards WHERE owner_id = $1", [owner.id]);
+    const res = await request(app)
+      .post("/api/createBoards")
+      .set(as(owner))
+      .send({ name });
+    const after = await pool.query("SELECT count(*)::int AS n FROM boards WHERE owner_id = $1", [owner.id]);
+    expect(res.status).toBe(400);
+    expect(after.rows[0].n).toBe(before.rows[0].n);
+  });
+
+  it("createBoards stores the name without surrounding spaces", async () => {
+    const res = await request(app)
+      .post("/api/createBoards")
+      .set(as(owner))
+      .send({ name: "  Home  " });
+    expect(res.status).toBe(201);
+    expect(res.body.board.name).toBe("Home");
+  });
+
   it("still accepts a name of exactly 255 characters", async () => {
     const res = await request(app)
       .post("/api/addList")

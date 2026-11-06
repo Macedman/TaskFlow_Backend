@@ -4,7 +4,8 @@ import { getUserId } from "../middlewares/authMiddleware";
 
 export const createBoard = async (req: Request, res: Response) => {
 
-    const { name } = req.body;
+    // trimmed like addList, so "   " (or a non-string) can't become a board with no visible name
+    const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
     const ownerId = getUserId(req);
 
     if (!name) {
@@ -14,7 +15,7 @@ export const createBoard = async (req: Request, res: Response) => {
         return;
     }
     // boards.name is VARCHAR(255); a longer value would make Postgres throw (500)
-    if (typeof name === "string" && name.length > 255) {
+    if (name.length > 255) {
         res.status(400).json({
             message: "name must be 255 characters or fewer"
         });
