@@ -150,6 +150,21 @@ describe("realtime: board:changed", () => {
     expect(elsewhere.heard).toEqual([]);
   });
 
+  it("takes a removed member off the board at once and tells their tab why", async () => {
+    const removed = await watch(member);
+    const ownerTab = await watch(owner);
+    const told = new Promise(resolve => removed.socket.once("board:removed", resolve));
+
+    await post(owner, "/api/removeBoardMember", { boardId, memberId: member.id }).expect(200);
+    expect(await told).toEqual({ boardId });
+
+    const ownerHears = nextChange(ownerTab.socket);
+    await post(owner, "/api/moveCard", { cardId, listId: doing, position: 0 }).expect(200);
+    await ownerHears;
+    await settle();
+    expect(removed.heard).toEqual([]);
+  });
+
   it("stops telling a socket after it leaves the board", async () => {
     const { socket, heard } = await watch(member);
     socket.emit("leaveBoard", boardId);
