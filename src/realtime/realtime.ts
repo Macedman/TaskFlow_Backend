@@ -60,6 +60,18 @@ export const notifyBoardChanged = (boardId: number | string, req: Request) => {
     target.emit("board:changed", { boardId: Number(boardId) });
 }
 
+// Call after a member has been removed: their open tabs leave the room, so they stop hearing
+// about the board, and are told why, so the page can send them back to the dashboard
+export const removeFromBoard = async (boardId: number | string, userId: number) => {
+    if (!io) return;
+    for (const socket of await io.in(room(boardId)).fetchSockets()) {
+        if (socket.data.user?.userId === userId) {
+            socket.leave(room(boardId));
+            socket.emit("board:removed", { boardId: Number(boardId) });
+        }
+    }
+}
+
 export const closeRealtime = async () => {
     await io?.close();
     io = undefined;

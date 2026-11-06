@@ -1,7 +1,7 @@
 import express, { Request, Response, RequestHandler } from 'express';
 import { signup } from './middlewares/signup';
 import { login } from './middlewares/login';
-import { loginLimiter, signupLimiter } from './middlewares/rateLimits';
+import { inviteLimiter, loginLimiter, signupLimiter } from './middlewares/rateLimits';
 import { authMiddleware } from './middlewares/authMiddleware';
 import { getTasks } from './getTasks/getTasks';
 import { getTaskDetails } from './getTaskDetails/getTaskDetails';
@@ -22,6 +22,9 @@ import { getAttachmentDownloadUrl } from './getAttachmentDownloadUrl/getAttachme
 import { downloadFile } from './downloadFile/downloadFile';
 import { getBoards } from './getBoards/getBoards';
 import { createBoard } from './createBoards/createBoards';
+import { getBoardMembers } from './getBoardMembers/getBoardMembers';
+import { addBoardMember } from './addBoardMember/addBoardMember';
+import { removeBoardMember } from './removeBoardMember/removeBoardMember';
 
 const router = express.Router();
 //router.use(authMiddleware)
@@ -55,4 +58,7 @@ router.post('/api/uploadPdfAttachment', uploadPdfAttachment);
 router.post('/api/getAttachmentDownloadUrl', getAttachmentDownloadUrl);
 router.post('/api/getBoards', getBoards);
 router.post('/api/createBoards', createBoard);
+router.post('/api/getBoardMembers', getBoardMembers);
+router.post('/api/addBoardMember', inviteLimiter, addBoardMember);
+router.post('/api/removeBoardMember', removeBoardMember);
 export default router;

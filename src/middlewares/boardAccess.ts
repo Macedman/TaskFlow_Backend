@@ -16,3 +16,13 @@ export const canAccessBoard = async (userId: number, boardId: number | string): 
     );
     return result.rows.length > 0;
 }
+
+// The board's owner id, or null when the board doesn't exist or the user can't access it.
+// Lets a handler answer 404 to outsiders but 403 to members who aren't the owner
+export const boardOwnerFor = async (userId: number, boardId: number | string): Promise<number | null> => {
+    const result = await pool.query(
+        `SELECT b.owner_id FROM boards b WHERE b.id = $2 AND ${BOARD_ACCESS_SQL}`,
+        [userId, boardId]
+    );
+    return result.rows.length > 0 ? result.rows[0].owner_id : null;
+}
