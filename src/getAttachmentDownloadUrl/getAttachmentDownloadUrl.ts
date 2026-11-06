@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import { getUserId } from "../middlewares/authMiddleware";
 import { isValidId } from "../middlewares/isValidId";
 import { BOARD_ACCESS_SQL } from "../middlewares/boardAccess";
-import { storage } from "../storage/storage";
+import { getDownloadUrl } from "../storage/storage";
 
 // A plain <a href> can't send the login token, so the client asks here first:
 // we check access once and hand back a link that only works for a few minutes
@@ -35,7 +35,7 @@ export const getAttachmentDownloadUrl = async (req: Request, res: Response) => {
             return;
         }
 
-        res.status(200).json({ url: await storage.getDownloadUrl(rows[0].storage_key, rows[0].name) });
+        res.status(200).json({ url: getDownloadUrl(rows[0].storage_key, rows[0].name) });
     } catch (error) {
         res.status(500).json({ message: "Internal server error" });
     }
