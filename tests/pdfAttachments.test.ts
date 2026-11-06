@@ -1,5 +1,3 @@
-import { existsSync } from "fs";
-import path from "path";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import {
@@ -10,6 +8,20 @@ import {
   resetDatabase,
   TestUser,
 } from "./helpers";
+
+// While `slow` is on, saving a file waits a moment inside the upload's transaction, so a second
+// upload really runs while the first one is still open (otherwise they just take turns)
+const saves = vi.hoisted(() => ({ slow: false }));
+vi.mock("../src/storage/storage", async importOriginal => {
+  const original = await importOriginal<typeof import("../src/storage/storage")>();
+  return {
+    ...original,
+    saveFile: async (...args: Parameters<typeof original.saveFile>) => {
+      if (saves.slow) await new Promise(resolve => setTimeout(resolve, 300));
+      return original.saveFile(...args);
+    },
+  };
+});
 
 let owner: TestUser;
 let member: TestUser;
@@ -42,10 +54,22 @@ const upload = (user: TestUser, file: Buffer | null, fileName = "spec.pdf", card
   return req;
 };
 
+// The stored key and bytes for an attachment, read straight from the database
 const storedFile = async (attachmentId: number) => {
-  const { rows } = await pool.query("SELECT storage_key FROM card_attachments WHERE id = $1", [attachmentId]);
-  return rows[0] ? path.join(process.env.UPLOADS_DIR as string, rows[0].storage_key) : null;
+  const { rows } = await pool.query(
+    `SELECT a.storage_key, f.data FROM card_attachments a
+    LEFT JOIN attachment_files f ON f.storage_key = a.storage_key
+    WHERE a.id = $1`,
+    [attachmentId]
+  );
+  return rows[0] as { storage_key: string; data: Buffer | null } | undefined;
 };
+
+const fileIsStored = async (storageKey: string) =>
+  (await pool.query("SELECT 1 FROM attachment_files WHERE storage_key = $1", [storageKey])).rows.length > 0;
+
+const countFiles = async () =>
+  (await pool.query("SELECT COUNT(*)::int AS n FROM attachment_files")).rows[0].n;
 
 const countAttachments = async () =>
   (await pool.query("SELECT COUNT(*)::int AS n FROM card_attachments")).rows[0].n;
@@ -69,8 +93,8 @@ describe("uploadPdfAttachment", () => {
     });
 
     const file = await storedFile(res.body.attachment_id);
-    expect(path.basename(file!)).toMatch(/^[0-9a-f-]{36}\.pdf$/);
-    expect(existsSync(file!)).toBe(true);
+    expect(file!.storage_key).toMatch(/^[0-9a-f-]{36}\.pdf$/);
+    expect(Buffer.compare(file!.data!, pdfBytes())).toBe(0);
   });
 
   it("keeps a non-English file name intact", async () => {
@@ -83,7 +107,8 @@ describe("uploadPdfAttachment", () => {
     const res = await upload(owner, pdfBytes(), "../../evil.pdf");
     expect(res.status).toBe(201);
     expect(res.body.name).toBe("evil.pdf");
-    expect(path.dirname((await storedFile(res.body.attachment_id))!)).toBe(process.env.UPLOADS_DIR);
+    // the name is display text only; the file is stored under a key we made up
+    expect((await storedFile(res.body.attachment_id))!.storage_key).toMatch(/^[0-9a-f-]{36}\.pdf$/);
   });
 
   it("shows up in getAttachments without revealing where it is stored", async () => {
@@ -100,12 +125,19 @@ describe("uploadPdfAttachment", () => {
     expect(await countAttachments()).toBe(before);
   });
 
-  it("rejects a file over 10 MB", async () => {
+  it("rejects a file over 5 MB", async () => {
     const before = await countAttachments();
-    const big = Buffer.concat([pdfBytes(), Buffer.alloc(10 * 1024 * 1024)]);
+    const big = Buffer.concat([pdfBytes(), Buffer.alloc(5 * 1024 * 1024)]);
     const res = await upload(owner, big, "big.pdf");
     expect(res.status).toBe(413);
     expect(await countAttachments()).toBe(before);
+  });
+
+  it("accepts a file of exactly 5 MB", async () => {
+    const exact = Buffer.concat([pdfBytes(), Buffer.alloc(5 * 1024 * 1024 - pdfBytes().length)]);
+    const res = await upload(owner, exact, "exact.pdf");
+    expect(res.status).toBe(201);
+    expect(res.body.size_bytes).toBe(5 * 1024 * 1024);
   });
 
   it("returns 400 without a file", async () => {
@@ -216,11 +248,90 @@ describe("downloading a PDF", () => {
 describe("deleting a PDF", () => {
   it("removes the stored file too", async () => {
     const id = (await upload(member, pdfBytes(), "temp.pdf")).body.attachment_id;
-    const file = await storedFile(id);
-    expect(existsSync(file!)).toBe(true);
+    const { storage_key } = (await storedFile(id))!;
+    expect(await fileIsStored(storage_key)).toBe(true);
 
     const res = await request(app).post("/api/deleteAttachment").set(as(member)).send({ attachmentId: id });
     expect(res.status).toBe(200);
-    expect(existsSync(file!)).toBe(false);
+    expect(await fileIsStored(storage_key)).toBe(false);
+  });
+
+  // there's no delete-card endpoint yet, so delete the row the way one would
+  it("removes a card's files when the card itself is deleted", async () => {
+    const card = await pool.query(
+      "INSERT INTO cards (list_id, title, position) VALUES ($1, 'Doomed', 99) RETURNING id",
+      [board.listId]
+    );
+    const id = (await upload(owner, pdfBytes(), "doomed.pdf", card.rows[0].id)).body.attachment_id;
+    const { storage_key } = (await storedFile(id))!;
+    expect(await fileIsStored(storage_key)).toBe(true);
+
+    await pool.query("DELETE FROM cards WHERE id = $1", [card.rows[0].id]);
+
+    expect(await fileIsStored(storage_key)).toBe(false);
+  });
+});
+
+describe("the total storage cap", () => {
+  const original = process.env.ATTACHMENT_STORAGE_LIMIT_MB;
+  afterEach(() => {
+    if (original === undefined) delete process.env.ATTACHMENT_STORAGE_LIMIT_MB;
+    else process.env.ATTACHMENT_STORAGE_LIMIT_MB = original;
+  });
+
+  const storedBytes = async () =>
+    (await pool.query("SELECT COALESCE(SUM(size_bytes), 0)::int AS n FROM card_attachments WHERE kind = 'pdf'")).rows[0].n;
+  // sets the cap to what's stored now plus room for `extra` bytes
+  const capWithRoomFor = async (extra: number) => {
+    process.env.ATTACHMENT_STORAGE_LIMIT_MB = String(((await storedBytes()) + extra) / (1024 * 1024));
+  };
+
+  it("refuses an upload that would go over the cap, counting what is already stored", async () => {
+    await capWithRoomFor(pdfBytes().length);
+    expect((await upload(owner, pdfBytes(), "fits.pdf")).status).toBe(201);
+
+    const before = await countFiles();
+    const res = await upload(owner, pdfBytes(), "one-too-many.pdf");
+    expect(res.status).toBe(507);
+    expect(res.body.message).toBe("Storage is full. Delete some PDFs to make room.");
+    expect(await countFiles()).toBe(before);
+  });
+
+  it("still lets everything else save when storage is full", async () => {
+    await capWithRoomFor(0);
+    expect((await upload(owner, pdfBytes(), "full.pdf")).status).toBe(507);
+
+    const card = await request(app).post("/api/addTask").set(as(owner)).send({ listId: board.listId, title: "Still works" });
+    expect(card.status).toBe(201);
+    const comment = await request(app).post("/api/addComment").set(as(owner)).send({ cardId: board.cardId, body: "Still works" });
+    expect(comment.status).toBe(201);
+    const link = await request(app).post("/api/addLinkAttachment").set(as(owner)).send({ cardId: board.cardId, url: "https://example.com" });
+    expect(link.status).toBe(201);
+  });
+
+  it("lets only one of two uploads at the same moment take the last bit of room", async () => {
+    await capWithRoomFor(pdfBytes().length);
+    saves.slow = true;
+
+    try {
+      const results = await Promise.all([upload(owner, pdfBytes(), "a.pdf"), upload(member, pdfBytes(), "b.pdf")]);
+      expect(results.map(r => r.status).sort()).toEqual([201, 507]);
+    } finally {
+      saves.slow = false;
+    }
+  });
+
+  it("makes room again once a PDF is deleted", async () => {
+    await capWithRoomFor(0);
+    expect((await upload(owner, pdfBytes(), "blocked.pdf")).status).toBe(507);
+
+    const { rows } = await pool.query(
+      "SELECT id FROM card_attachments WHERE kind = 'pdf' AND user_id = $1 ORDER BY id DESC LIMIT 1",
+      [owner.id]
+    );
+    // the newest is one of the small test PDFs, so deleting it frees exactly the room needed
+    await request(app).post("/api/deleteAttachment").set(as(owner)).send({ attachmentId: rows[0].id });
+
+    expect((await upload(owner, pdfBytes(), "unblocked.pdf")).status).toBe(201);
   });
 });

@@ -6,15 +6,26 @@ import { getUserId } from "../middlewares/authMiddleware";
 import { isValidId } from "../middlewares/isValidId";
 import { BOARD_ACCESS_SQL } from "../middlewares/boardAccess";
 import { ATTACHMENT_COLUMNS } from "../getAttachments/getAttachments";
-import { storage } from "../storage/storage";
+import { saveFile } from "../storage/storage";
 
-const MAX_PDF_BYTES = 10 * 1024 * 1024;
+const MAX_PDF_BYTES = 5 * 1024 * 1024;
+
+// PDFs share the database with everything else. Neon's free plan stops all writes when it is full,
+// so uploads stop here first, well below that, and the rest of the app keeps working
+const DEFAULT_STORAGE_LIMIT_MB = 100;
+const storageLimitBytes = () => {
+    const mb = Number(process.env.ATTACHMENT_STORAGE_LIMIT_MB);
+    return (mb > 0 ? mb : DEFAULT_STORAGE_LIMIT_MB) * 1024 * 1024;
+}
+
+// Any fixed number works; every upload takes this same lock, so they check the total one at a time
+const STORAGE_LOCK_ID = 7001;
 
 // Every PDF starts with these bytes. The file name and the browser's content type are easy to fake;
 // the first bytes are what the file really is
 const PDF_SIGNATURE = Buffer.from("%PDF-");
 
-// Keeps the upload in memory and stops reading at 10 MB. utf8 so names like "résumé.pdf" survive
+// Keeps the upload in memory and stops reading at 5 MB. utf8 so names like "résumé.pdf" survive
 const receiveOnePdf = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: MAX_PDF_BYTES, files: 1 },
@@ -33,7 +44,7 @@ export const uploadPdfAttachment = async (req: Request, res: Response) => {
         await readUpload(req, res);
     } catch (error) {
         const tooBig = error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE";
-        res.status(tooBig ? 413 : 400).json({ message: tooBig ? "PDF must be 10 MB or smaller" : "Invalid upload" });
+        res.status(tooBig ? 413 : 400).json({ message: tooBig ? "PDF must be 5 MB or smaller" : "Invalid upload" });
         return;
     }
 
@@ -65,12 +76,26 @@ export const uploadPdfAttachment = async (req: Request, res: Response) => {
             return;
         }
 
-        // a name we generate, never the user's, so it can't point outside the uploads folder
+        // a name we generate, never the user's
         const key = `${randomUUID()}.pdf`;
-        await storage.save(key, file.buffer);
+        const client = await pool.connect();
 
         try {
-            const { rows } = await pool.query(
+            await client.query("BEGIN");
+            // held until COMMIT/ROLLBACK: without it, two uploads could both read the same total
+            // and both fit into the last bit of room
+            await client.query("SELECT pg_advisory_xact_lock($1)", [STORAGE_LOCK_ID]);
+            const used = await client.query(
+                "SELECT COALESCE(SUM(size_bytes), 0)::bigint AS bytes FROM card_attachments WHERE kind = 'pdf'"
+            );
+            if (Number(used.rows[0].bytes) + file.size > storageLimitBytes()) {
+                await client.query("ROLLBACK");
+                res.status(507).json({ message: "Storage is full. Delete some PDFs to make room." });
+                return;
+            }
+
+            // the row and its file are committed together, or neither is
+            const { rows } = await client.query(
                 `WITH a AS (
                     INSERT INTO card_attachments (card_id, user_id, kind, name, storage_key, size_bytes)
                     VALUES ($1, $2, 'pdf', $3, $4, $5)
@@ -81,11 +106,14 @@ export const uploadPdfAttachment = async (req: Request, res: Response) => {
                 JOIN users u ON u.id = a.user_id;`,
                 [cardId, userId, displayName(file.originalname), key, file.size]
             );
+            await saveFile(client, key, file.buffer);
+            await client.query("COMMIT");
             res.status(201).json(rows[0]);
         } catch (error) {
-            // no row points at the file, so don't keep it
-            await storage.remove(key);
+            await client.query("ROLLBACK");
             throw error;
+        } finally {
+            client.release();
         }
     } catch (error) {
         res.status(500).json({ message: "Internal server error" });

@@ -3,7 +3,6 @@ import { Request, Response } from "express";
 import { getUserId } from "../middlewares/authMiddleware";
 import { isValidId } from "../middlewares/isValidId";
 import { BOARD_ACCESS_SQL } from "../middlewares/boardAccess";
-import { storage } from "../storage/storage";
 
 export const deleteAttachment = async (req: Request, res: Response) => {
     const { attachmentId } = req.body;
@@ -26,7 +25,7 @@ export const deleteAttachment = async (req: Request, res: Response) => {
             AND a.id = $2
             AND (a.user_id = $1 OR b.owner_id = $1)
             AND ${BOARD_ACCESS_SQL}
-            RETURNING a.id, a.storage_key;`,
+            RETURNING a.id;`,
             [userId, attachmentId]
         );
         if (rows.length === 0) {
@@ -34,14 +33,7 @@ export const deleteAttachment = async (req: Request, res: Response) => {
             return;
         }
 
-        // row first, then the file: if removing the file fails we only leave an unused file,
-        // never a row pointing at a missing one
-        if (rows[0].storage_key) {
-            await storage.remove(rows[0].storage_key).catch(error =>
-                console.error("Could not remove attachment file", rows[0].storage_key, error)
-            );
-        }
-
+        // a PDF's file went with the row: attachment_files cascades on delete
         res.status(200).json({ attachment_id: rows[0].id });
     } catch (error) {
         res.status(500).json({ message: "Internal server error" });
