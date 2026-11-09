@@ -1,6 +1,10 @@
 import { createServer } from 'http';
 import app from './app';
 import { attachRealtime } from './realtime/realtime';
+import { checkEnv } from './config/checkEnv';
+
+// .env is already loaded by the imports above (config/db.ts)
+checkEnv(process.env);
 
 const port = process.env.PORT || 3000;
 
